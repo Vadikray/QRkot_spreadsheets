@@ -1,9 +1,9 @@
 from datetime import datetime
 
 from aiogoogle import Aiogoogle
-from app.core.config import settings
 
-FORMAT = "%Y/%m/%d %H:%M:%S"
+from app.constants import FORMAT
+from app.core.config import settings
 
 
 async def spreadsheets_create(wrapper_services: Aiogoogle) -> str:

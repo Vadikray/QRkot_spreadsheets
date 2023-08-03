@@ -2,17 +2,16 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.validators import (
+    check_charity_project_before_update,
     check_charity_project_exists,
     check_name_duplicate,
-    check_charity_project_active,
-    check_charity_project_has_investment,
-    check_charity_project_updated_amount
 )
 from app.core.db import get_async_session
 from app.core.user import current_superuser
 from app.crud.charity_project import charity_project_crud
 from app.models import Donation, CharityProject
 from app.services.investment import Investment
+from app.services.validators import (check_charity_project_has_investment)
 from app.schemas.charity_project import (
     CharityProjectCreate,
     CharityProjectDB,
@@ -62,30 +61,13 @@ async def partially_update_charity_project(
         session: AsyncSession = Depends(get_async_session),
 ) -> CharityProject:
     """Только для суперюзеров."""
-    charity_project = await check_charity_project_exists(
-        charity_project_id, session
-    )
-    charity_project = await check_charity_project_active(
-        charity_project,
-    )
-    if obj_in.name is not None:
-        await check_name_duplicate(obj_in.name, session)
-    if not obj_in.full_amount:
-        charity_project = await charity_project_crud.update(
-            charity_project, obj_in, session
-        )
-        return charity_project
-    await check_charity_project_updated_amount(
-        obj_in.full_amount,
-        charity_project.invested_amount,
+    charity_project = await check_charity_project_before_update(
+        charity_project_id=charity_project_id,
+        obj_in=obj_in,
+        session=session,
     )
     charity_project = await charity_project_crud.update(
         charity_project, obj_in, session
-    )
-    charity_project = await Investment.donation_process(
-        charity_project,
-        session,
-        Donation,
     )
     return charity_project
 
