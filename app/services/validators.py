@@ -1,6 +1,13 @@
 from http import HTTPStatus
 
-from app.error_handlers import (EditProjectException)
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.crud.charity_project import charity_project_crud
+from app.error_handlers import (
+    NameDuplicateException,
+    MissingProjectException,
+    EditProjectException,
+)
 from app.models.charity_project import CharityProject
 
 
@@ -23,3 +30,43 @@ async def check_charity_project_updated_amount(
             status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
             detail='Нельзя установить требуемую сумму меньше уже вложенной'
         )
+
+
+async def check_name_duplicate(
+        charity_project_name: str,
+        session: AsyncSession,
+) -> None:
+    room_id = await charity_project_crud.get_charity_project_id_by_name(
+        charity_project_name, session
+    )
+    if room_id is not None:
+        raise NameDuplicateException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail='Проект с таким именем уже существует!',
+        )
+
+
+async def check_charity_project_active(
+    charity_project: CharityProject,
+) -> CharityProject:
+    if charity_project.fully_invested:
+        raise EditProjectException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail='Закрытый проект нельзя редактировать!'
+        )
+    return charity_project
+
+
+async def check_charity_project_exists(
+    charity_project_id: int,
+    session: AsyncSession,
+) -> CharityProject:
+    charity_project = await charity_project_crud.get(
+        charity_project_id, session
+    )
+    if charity_project is None:
+        raise MissingProjectException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='Такого проекта нет!'
+        )
+    return charity_project

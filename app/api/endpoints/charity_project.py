@@ -1,22 +1,16 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.validators import (
-    check_charity_project_before_update,
-    check_charity_project_exists,
-    check_name_duplicate,
-)
 from app.core.db import get_async_session
 from app.core.user import current_superuser
-from app.crud.charity_project import charity_project_crud
-from app.models import Donation, CharityProject
-from app.services.investment import Investment
-from app.services.validators import (check_charity_project_has_investment)
-from app.schemas.charity_project import (
-    CharityProjectCreate,
-    CharityProjectDB,
-    CharityProjectUpdate
-)
+from app.models import CharityProject
+from app.schemas.charity_project import (CharityProjectCreate,
+                                         CharityProjectDB,
+                                         CharityProjectUpdate)
+from app.services.charity_project import (create_charity_project,
+                                          delete_charity_project,
+                                          get_charity_projects,
+                                          update_charity_project)
 
 router = APIRouter()
 
@@ -32,10 +26,7 @@ async def create_new_charity_project(
         session: AsyncSession = Depends(get_async_session),
 ) -> CharityProject:
     """Только для суперюзеров."""
-    await check_name_duplicate(charity_project.name, session)
-    new_project = await charity_project_crud.create(charity_project, session)
-    new_project = await Investment.donation_process(new_project, session, Donation)
-    return new_project
+    return await create_charity_project(charity_project, session)
 
 
 @router.get(
@@ -46,8 +37,7 @@ async def create_new_charity_project(
 async def get_all_charity_project(
         session: AsyncSession = Depends(get_async_session),
 ) -> list[CharityProject]:
-    all_projects = await charity_project_crud.get_multi(session)
-    return all_projects
+    return await get_charity_projects(session)
 
 
 @router.patch(
@@ -61,15 +51,11 @@ async def partially_update_charity_project(
         session: AsyncSession = Depends(get_async_session),
 ) -> CharityProject:
     """Только для суперюзеров."""
-    charity_project = await check_charity_project_before_update(
+    return await update_charity_project(
         charity_project_id=charity_project_id,
         obj_in=obj_in,
         session=session,
     )
-    charity_project = await charity_project_crud.update(
-        charity_project, obj_in, session
-    )
-    return charity_project
 
 
 @router.delete(
@@ -82,12 +68,4 @@ async def remove_charity_project(
         session: AsyncSession = Depends(get_async_session),
 ) -> CharityProject:
     """Только для суперюзеров."""
-    charity_project = await check_charity_project_exists(
-        charity_project_id, session
-    )
-    await check_charity_project_has_investment(charity_project)
-    charity_project = await charity_project_crud.remove(
-        charity_project, session
-    )
-
-    return charity_project
+    return await delete_charity_project(charity_project_id, session)

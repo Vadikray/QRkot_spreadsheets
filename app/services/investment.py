@@ -3,8 +3,9 @@ from typing import Set
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.base import BaseModel
+
 from app.models import CharityProject
+from app.models.base import BaseModel
 
 
 class Investment:

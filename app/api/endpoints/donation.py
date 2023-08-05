@@ -3,15 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
 from app.core.user import current_user
-from app.crud.donation import donation_crud
 from app.models import Donation, User
-from app.schemas.donation import (
-    DonationDB,
-    DonationCreate,
-    DonationDBFull
-)
-from app.services.investment import Investment
-
+from app.schemas.donation import DonationCreate, DonationDB, DonationDBFull
+from app.services.donation import (create_donation, get_donations,
+                                   get_user_donations)
 
 router = APIRouter()
 
@@ -28,11 +23,7 @@ async def create_new_donation(
     user: User = Depends(current_user),
 ) -> Donation:
     """Сделать пожертвование."""
-    new_donation = await donation_crud.create(donation, session, user)
-    new_donation = await Investment.donation_process(
-        new_donation, session
-    )
-    return new_donation
+    return await create_donation(donation, session, user)
 
 
 @router.get(
@@ -42,8 +33,7 @@ async def create_new_donation(
 async def get_all_donations(
     session: AsyncSession = Depends(get_async_session)
 ) -> list[Donation]:
-    donations = await donation_crud.get_multi(session)
-    return donations
+    return await get_donations(session)
 
 
 @router.get(
@@ -55,7 +45,4 @@ async def get_my_donations(
     user: User = Depends(current_user)
 ) -> Donation:
     """Получает список всех пожертвований для текущего пользователя."""
-    donations = await donation_crud.get_all_donations_user(
-        session=session, user=user
-    )
-    return donations
+    return await get_user_donations(session, user)
